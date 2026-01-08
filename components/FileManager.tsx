@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { UploadCloud, File, FileText, Download, Trash2, Search, Plus, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { UploadCloud, File, FileText, Download, Trash2, Search, Plus, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, Eye, X, Loader2 } from 'lucide-react';
 import { StoredFile } from '../types';
 
 interface FileManagerProps {
@@ -23,11 +23,97 @@ interface UploadingFile {
   status: 'uploading' | 'success' | 'error';
 }
 
+const FilePreviewModal: React.FC<{ file: StoredFile; onClose: () => void; onDownload: (f: StoredFile) => void }> = ({ file, onClose, onDownload }) => {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) return;
+    try {
+        const url = URL.createObjectURL(file.content);
+        setObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error("Preview generation failed", e);
+    }
+  }, [file]);
+
+  const isImage = file.type.startsWith('image/');
+  const isPdf = file.type === 'application/pdf';
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col z-10 overflow-hidden animate-scale-in relative">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-white z-20">
+            <div className="flex items-center gap-3 overflow-hidden">
+                <div className="p-2 bg-medical-50 text-medical-600 rounded-lg">
+                    {isImage ? <FileText size={20}/> : <FileText size={20} />}
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-slate-900 truncate max-w-md">{file.name}</h3>
+                    <p className="text-xs text-slate-500">{file.type} • {(file.size / 1024).toFixed(1)} KB</p>
+                </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <X size={24} />
+            </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+            {objectUrl ? (
+                <>
+                    {isImage && (
+                        <img src={objectUrl} alt={file.name} className="max-w-full max-h-full object-contain shadow-lg" />
+                    )}
+                    {isPdf && (
+                        <iframe src={objectUrl} className="w-full h-full border-none" title="PDF Preview"></iframe>
+                    )}
+                    {!isImage && !isPdf && (
+                         <div className="text-center p-8 bg-white rounded-xl shadow-sm max-w-sm mx-auto">
+                            <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                <FileText className="text-slate-400" size={32} />
+                            </div>
+                            <h4 className="text-lg font-semibold text-slate-900 mb-2">Preview Not Available</h4>
+                            <p className="text-slate-500 mb-6">This file type cannot be previewed directly in the browser.</p>
+                            <button onClick={() => onDownload(file)} className="text-medical-600 font-medium hover:underline">
+                                Download to view
+                            </button>
+                         </div>
+                    )}
+                </>
+            ) : (
+                <div className="flex items-center gap-2 text-slate-500">
+                    <Loader2 className="animate-spin" /> Loading preview...
+                </div>
+            )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3 z-20">
+             <button onClick={onClose} className="px-5 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
+                Close
+            </button>
+            <button 
+                onClick={() => onDownload(file)} 
+                className="px-5 py-2.5 bg-medical-600 text-white hover:bg-medical-700 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-medical-200 transition-transform hover:scale-105"
+            >
+                <Download size={18} /> Download File
+            </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const FileManager: React.FC<FileManagerProps> = ({ files, searchTerm, onUpload, onDelete }) => {
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'uploadDate', direction: 'desc' });
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [previewFile, setPreviewFile] = useState<StoredFile | null>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -169,6 +255,14 @@ export const FileManager: React.FC<FileManagerProps> = ({ files, searchTerm, onU
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in-up">
+      {previewFile && (
+        <FilePreviewModal 
+          file={previewFile} 
+          onClose={() => setPreviewFile(null)} 
+          onDownload={handleDownload}
+        />
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Patient Documents</h2>
@@ -303,6 +397,13 @@ export const FileManager: React.FC<FileManagerProps> = ({ files, searchTerm, onU
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-3">
+                          <button 
+                            onClick={() => setPreviewFile(file)}
+                            className="text-teal-600 hover:text-teal-800 transition-colors p-1 hover:bg-teal-50 rounded"
+                            title="Preview"
+                          >
+                            <Eye size={18} />
+                          </button>
                           <button 
                             onClick={() => handleDownload(file)}
                             className="text-medical-600 hover:text-medical-900 transition-colors p-1 hover:bg-medical-50 rounded"

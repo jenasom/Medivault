@@ -6,11 +6,12 @@ import { FileManager } from './components/FileManager';
 import { MedicalAssistant } from './components/MedicalAssistant';
 import { User, StoredFile, AppView } from './types';
 import { AuthService, FileService } from './lib/backend';
+import { GoogleGenAI } from "@google/genai";
 
 // Mock UUID generator since we can't easily import external non-standard libs without package.json
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-// Mock Medical Courses for demonstration
+// Medical Courses for classification
 const MEDICAL_COURSES = [
   'General Medicine', 
   'Cardiology', 
@@ -20,6 +21,55 @@ const MEDICAL_COURSES = [
   'Orthopedics', 
   'Radiology'
 ];
+
+// --- Classification Logic ---
+
+const classifyFileLocal = (filename: string): string => {
+  const lower = filename.toLowerCase();
+  if (lower.match(/heart|cardio|ecg|ekg|vascular|bp|aorta/)) return 'Cardiology';
+  if (lower.match(/brain|neuro|stroke|spine|nerve|head|mental/)) return 'Neurology';
+  if (lower.match(/child|ped|infant|baby|growth|vaccine/)) return 'Pediatrics';
+  if (lower.match(/cancer|tumor|chemo|onco|mass|biopsy|malignant/)) return 'Oncology';
+  if (lower.match(/bone|fracture|ortho|knee|joint|hip|muscle/)) return 'Orthopedics';
+  if (lower.match(/xray|x-ray|mri|ct|scan|ultrasound|image|dicom/)) return 'Radiology';
+  return 'General Medicine';
+};
+
+const classifyDocument = async (file: File): Promise<string> => {
+  // 1. Try AI Classification if Key exists
+  if (process.env.API_KEY) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `You are a medical records administrator. 
+        Classify the following document into exactly one of these categories: 
+        ${MEDICAL_COURSES.join(', ')}. 
+        
+        Rules:
+        1. Analyze the filename and file type.
+        2. If the name contains specific medical terms, map them to the correct specialty.
+        3. If it is generic (e.g., "report.pdf"), choose "General Medicine".
+        4. Return ONLY the category name string. No markdown, no punctuation.
+
+        Filename: "${file.name}"
+        MIME Type: "${file.type}"`,
+      });
+      
+      const text = response.text?.trim();
+      // Validate the AI output matches our known courses
+      if (text && MEDICAL_COURSES.some(c => c.toLowerCase() === text.toLowerCase())) {
+        // Return the matching case-correct string from our array
+        return MEDICAL_COURSES.find(c => c.toLowerCase() === text.toLowerCase()) || 'General Medicine';
+      }
+    } catch (e) {
+      console.warn("AI Classification failed, falling back to local heuristics", e);
+    }
+  }
+  
+  // 2. Fallback to Local Heuristics
+  return classifyFileLocal(file.name);
+};
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -75,23 +125,24 @@ const App: React.FC = () => {
   };
 
   const handleUpload = async (uploadedFiles: File[]) => {
-    // 1. Prepare data
-    const newFiles: StoredFile[] = uploadedFiles.map(file => ({
-      id: generateId(),
-      name: file.name,
-      type: file.type || 'application/octet-stream',
-      size: file.size,
-      uploadDate: new Date(),
-      medicalCourse: MEDICAL_COURSES[Math.floor(Math.random() * MEDICAL_COURSES.length)],
-      content: file
+    // 1. Process files with intelligent classification
+    const newFiles: StoredFile[] = await Promise.all(uploadedFiles.map(async (file) => {
+      const category = await classifyDocument(file);
+      
+      return {
+        id: generateId(),
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        uploadDate: new Date(),
+        medicalCourse: category, // Determined by AI or Heuristics
+        content: file
+      };
     }));
 
-    // 2. Optimistic UI Update (Optional, but we'll wait for DB here for safety)
+    // 2. Persist to "Backend" & Update State
     try {
-      // 3. Persist to "Backend"
       await FileService.uploadFiles(newFiles);
-      
-      // 4. Update State
       setFiles(prev => [...prev, ...newFiles]);
     } catch (error) {
       console.error("Upload failed:", error);

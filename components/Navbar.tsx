@@ -1,6 +1,7 @@
 import React from 'react';
-import { Activity, User as UserIcon, LogOut, Search } from 'lucide-react';
+import { Activity, User as UserIcon, LogOut, Search, Cloud, CloudOff, Database } from 'lucide-react';
 import { User } from '../types';
+import { isCloudEnabled } from '../lib/backend';
 
 interface NavbarProps {
   user: User | null;
@@ -20,9 +21,19 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLoginClick, onLogoutClic
             <div className="bg-medical-600 p-2 rounded-lg text-white">
               <Activity size={24} />
             </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-medical-700 to-teal-600 hidden sm:block">
-              MediVault
-            </span>
+            <div className="hidden sm:block">
+              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-medical-700 to-teal-600">
+                MediVault
+              </span>
+              {/* Environment Indicator */}
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold">
+                {isCloudEnabled ? (
+                  <span className="text-teal-600 flex items-center gap-1"><Cloud size={10} /> Cloud Sync Active</span>
+                ) : (
+                  <span className="text-amber-600 flex items-center gap-1" title="Data is saved to this device only"><Database size={10} /> Local Storage (Device Only)</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Global Search Bar - Only visible when logged in */}
