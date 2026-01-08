@@ -82,6 +82,8 @@ const App: React.FC = () => {
   // Initial Data Fetching from "Database"
   useEffect(() => {
     const loadData = async () => {
+      // In a real app, you might want to separate guest files from user files.
+      // For this demo, we just allow access to the shared pool if user is set (even as guest).
       if (user) {
         try {
           const fetchedFiles = await FileService.getAllFiles();
@@ -122,6 +124,12 @@ const App: React.FC = () => {
     setFiles([]); // Clear sensitive data from memory on logout
     setGlobalSearchTerm('');
     setCurrentView(AppView.LANDING);
+  };
+
+  const handleGendocAccess = () => {
+    // Authenticate as a transient guest user
+    setUser({ username: 'GENDOC Guest', email: 'guest@medivault.local' });
+    setCurrentView(AppView.DASHBOARD);
   };
 
   const handleUpload = async (uploadedFiles: File[]) => {
@@ -180,7 +188,10 @@ const App: React.FC = () => {
 
       <main className="flex-grow">
         {currentView === AppView.LANDING ? (
-          <Hero onGetStarted={handleGetStarted} />
+          <Hero 
+            onGetStarted={handleGetStarted} 
+            onGendocAccess={handleGendocAccess}
+          />
         ) : (
           <FileManager 
             files={files} 

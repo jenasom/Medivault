@@ -1,11 +1,12 @@
 import React from 'react';
-import { ShieldCheck, FileText, Database, ArrowRight } from 'lucide-react';
+import { ShieldCheck, FileText, Database, ArrowRight, FileHeart } from 'lucide-react';
 
 interface HeroProps {
   onGetStarted: () => void;
+  onGendocAccess: () => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ onGetStarted }) => {
+export const Hero: React.FC<HeroProps> = ({ onGetStarted, onGendocAccess }) => {
   return (
     <div className="relative overflow-hidden bg-medical-50 pt-16 pb-32">
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
@@ -24,13 +25,22 @@ export const Hero: React.FC<HeroProps> = ({ onGetStarted }) => {
           <p className="mt-4 max-w-md mx-auto text-base text-slate-600 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
             Store, manage, and share sensitive patient records, PDFs, and medical documentation with enterprise-grade encryption and ease.
           </p>
-          <div className="mt-10 max-w-sm mx-auto sm:max-w-none sm:flex sm:justify-center">
+          <div className="mt-10 max-w-sm mx-auto sm:max-w-none flex flex-col sm:flex-row justify-center gap-4">
             <button
               onClick={onGetStarted}
               className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-full text-white bg-medical-600 hover:bg-medical-700 md:py-4 md:text-lg md:px-10 shadow-xl shadow-medical-200 transition-all hover:scale-105"
             >
               Access Portal
               <ArrowRight className="ml-2 -mr-1" size={20} />
+            </button>
+            
+            {/* GENDOC Button */}
+            <button
+              onClick={onGendocAccess}
+              className="w-full flex items-center justify-center px-8 py-3 border border-teal-200 bg-white text-base font-medium rounded-full text-teal-700 hover:bg-teal-50 hover:border-teal-300 md:py-4 md:text-lg md:px-10 shadow-sm transition-all hover:scale-105"
+            >
+              <FileHeart className="mr-2" size={20} />
+              GENDOC Guest
             </button>
           </div>
         </div>

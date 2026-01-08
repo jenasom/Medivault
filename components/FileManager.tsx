@@ -41,22 +41,23 @@ const FilePreviewModal: React.FC<{ file: StoredFile; onClose: () => void; onDown
   const isPdf = file.type === 'application/pdf';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col z-10 overflow-hidden animate-scale-in relative">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+      {/* Mobile: Full screen, Desktop: Rounded card */}
+      <div className="bg-white sm:rounded-2xl shadow-2xl w-full h-full sm:h-[85vh] max-w-5xl flex flex-col z-10 overflow-hidden animate-scale-in relative">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-white z-20">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-white z-20 shadow-sm">
             <div className="flex items-center gap-3 overflow-hidden">
-                <div className="p-2 bg-medical-50 text-medical-600 rounded-lg">
+                <div className="p-2 bg-medical-50 text-medical-600 rounded-lg flex-shrink-0">
                     {isImage ? <FileText size={20}/> : <FileText size={20} />}
                 </div>
-                <div>
-                    <h3 className="text-lg font-bold text-slate-900 truncate max-w-md">{file.name}</h3>
-                    <p className="text-xs text-slate-500">{file.type} • {(file.size / 1024).toFixed(1)} KB</p>
+                <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">{file.name}</h3>
+                    <p className="text-xs text-slate-500 truncate">{file.type} • {(file.size / 1024).toFixed(1)} KB</p>
                 </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors flex-shrink-0">
                 <X size={24} />
             </button>
         </div>
@@ -66,13 +67,28 @@ const FilePreviewModal: React.FC<{ file: StoredFile; onClose: () => void; onDown
             {objectUrl ? (
                 <>
                     {isImage && (
-                        <img src={objectUrl} alt={file.name} className="max-w-full max-h-full object-contain shadow-lg" />
+                        <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                            <img src={objectUrl} alt={file.name} className="max-w-full max-h-none sm:max-h-full object-contain shadow-lg" />
+                        </div>
                     )}
                     {isPdf && (
-                        <iframe src={objectUrl} className="w-full h-full border-none" title="PDF Preview"></iframe>
+                        <div className="w-full h-full bg-slate-200">
+                             {/* Object tag often handles mobile PDFs better than iframe in some contexts, or fallback to iframe */}
+                            <object data={objectUrl} type="application/pdf" className="w-full h-full block">
+                                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                                    <p className="mb-4 text-slate-600">This browser may not support inline PDF preview.</p>
+                                    <button 
+                                        onClick={() => onDownload(file)} 
+                                        className="px-4 py-2 bg-medical-600 text-white rounded-lg shadow-sm"
+                                    >
+                                        Download PDF to View
+                                    </button>
+                                </div>
+                            </object>
+                        </div>
                     )}
                     {!isImage && !isPdf && (
-                         <div className="text-center p-8 bg-white rounded-xl shadow-sm max-w-sm mx-auto">
+                         <div className="text-center p-8 bg-white rounded-xl shadow-sm max-w-sm mx-auto m-4">
                             <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                                 <FileText className="text-slate-400" size={32} />
                             </div>
@@ -92,15 +108,15 @@ const FilePreviewModal: React.FC<{ file: StoredFile; onClose: () => void; onDown
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3 z-20">
-             <button onClick={onClose} className="px-5 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors">
+        <div className="p-4 border-t border-slate-100 bg-white flex justify-between sm:justify-end gap-3 z-20 pb-safe">
+             <button onClick={onClose} className="flex-1 sm:flex-none px-5 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-medium transition-colors border border-slate-200 sm:border-transparent">
                 Close
             </button>
             <button 
                 onClick={() => onDownload(file)} 
-                className="px-5 py-2.5 bg-medical-600 text-white hover:bg-medical-700 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-medical-200 transition-transform hover:scale-105"
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-medical-600 text-white hover:bg-medical-700 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-medical-200 transition-transform active:scale-95"
             >
-                <Download size={18} /> Download File
+                <Download size={18} /> <span className="hidden sm:inline">Download File</span><span className="sm:hidden">Download</span>
             </button>
         </div>
       </div>
@@ -358,10 +374,10 @@ export const FileManager: React.FC<FileManagerProps> = ({ files, searchTerm, onU
               <thead className="bg-slate-50">
                 <tr>
                   <SortableHeader label="Document Name" columnKey="name" />
-                  <SortableHeader label="Medical Course" columnKey="medicalCourse" />
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                  <SortableHeader label="Size" columnKey="size" />
-                  <SortableHeader label="Uploaded" columnKey="uploadDate" />
+                  <SortableHeader label="Medical Course" columnKey="medicalCourse" className="hidden sm:table-cell" />
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Type</th>
+                  <SortableHeader label="Size" columnKey="size" className="hidden lg:table-cell" />
+                  <SortableHeader label="Uploaded" columnKey="uploadDate" className="hidden lg:table-cell" />
                   <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -375,24 +391,27 @@ export const FileManager: React.FC<FileManagerProps> = ({ files, searchTerm, onU
                             <FileText size={20} />
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-slate-900">{file.name}</div>
+                            <div className="text-sm font-medium text-slate-900 truncate max-w-[150px] sm:max-w-xs">{file.name}</div>
+                            <div className="sm:hidden text-xs text-slate-500 mt-1">
+                                {file.medicalCourse} • {(file.size / 1024).toFixed(0)} KB
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
                           {file.medicalCourse}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-slate-100 text-slate-800">
                           {file.type.split('/')[1]?.toUpperCase() || 'FILE'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden lg:table-cell">
                         {formatSize(file.size)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden lg:table-cell">
                         {file.uploadDate.toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
