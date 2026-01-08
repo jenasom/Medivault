@@ -5,7 +5,6 @@ import { AuthModal } from './components/Auth';
 import { FileManager } from './components/FileManager';
 import { MedicalAssistant } from './components/MedicalAssistant';
 import { User, StoredFile, AppView } from './types';
-import { v4 as uuidv4 } from 'uuid'; // Normally use uuid library, but for simplicity here we'll mock it
 
 // Mock UUID generator since we can't easily import external non-standard libs without package.json
 const generateId = () => Math.random().toString(36).substr(2, 9);
